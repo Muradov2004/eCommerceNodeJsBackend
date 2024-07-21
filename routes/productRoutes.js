@@ -7,8 +7,15 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const products = await Product.find();
-    res.json(products);
+    const page = parseInt(req.query.page) || 1;
+    const item_count = parseInt(req.query.item_count) || 10;
+
+    const skip = (page - 1) * item_count;
+    const totalItems = await Product.countDocuments();
+    const totalPages = Math.ceil(totalItems / item_count);
+
+    const items = await Product.find().skip(skip).limit(item_count);
+    res.json(items, page, totalPages);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -27,12 +34,13 @@ router.get("/:id", async (req, res) => {
 router.put("/edit/:id", authorize, checkAdmin, async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, {
-      name: req.body.name,
+      title: req.body.title,
       description: req.body.description,
       price: req.body.price,
       category: req.body.category,
       stock: req.body.stock,
-      imageUrl: req.body.imageUrl,
+      images: req.body.images,
+      currency: req.body.currency,
     });
     if (updatedProduct) res.json(updatedProduct);
     else res.status(404).json({ message: "product not found" });
@@ -41,37 +49,49 @@ router.put("/edit/:id", authorize, checkAdmin, async (req, res) => {
   }
 });
 
-router.delete(
-  "/delete/:id",
-  authorize,
-  checkAdmin,
-  async (req, res) => {
-    try {
-      const status = await Product.findByIdAndDelete(req.params.id);
-      if (status) res.json("deleted");
-      else res.json("error");
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
+router.delete("/delete/:id", authorize, checkAdmin, async (req, res) => {
+  try {
+    const status = await Product.findByIdAndDelete(req.params.id);
+    if (status) res.json("deleted");
+    else res.json("error");
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-);
+});
 
 router.post("/create", authorize, checkAdmin, async (req, res) => {
   try {
-    const { name, description, price, category, stock, imageUrl } = req.body;
+    const { title, description, price, category, stock, images, currency} = req.body;
     const newProduct = new Product({
-      name,
+      title,
       description,
       price,
       category,
       stock,
-      imageUrl,
+      images,
+      currency,
     });
 
     await newProduct.save();
     res.status(201).json(newProduct);
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/search/:searchTerm", authorize, async (req, res) => {
+  try{
+      const searchTerm = req.params.searchTerm;
+      const result = await Product.find({
+          $or: [
+              { title: { $regex: searchTerm, $options: "i" }},
+              { description: { $regex: searchTerm, $options: "i"}},
+          ],
+      });
+
+      res.json(result);
+  } catch(err){
+      res.status(500).json({ message: err.message });
   }
 });
 

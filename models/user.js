@@ -6,7 +6,8 @@ const userSchema = new Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   isAdmin: { type: Boolean, default: false },
-  orders: [{ type: Schema.Types.ObjectId, ref: 'OrderItem' }]
+  orders: [{ type: Schema.Types.ObjectId, ref: "OrderItem" }],
+  basket: [{ type: Schema.Types.ObjectId, ref: "Product" }],
 });
 
 const User = mongoose.model("User", userSchema);

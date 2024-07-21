@@ -6,18 +6,20 @@ const router = express.Router();
 
 router.get("/", authorize, async (req, res) => {
   try {
-    const orders = await Order.find();
+    const orders = await Order.find({ owner: req.user }).populate("products");
     res.json(orders);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json(err.message);
   }
 });
 
 router.get("/:id", authorize, async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id)
+      .populate("products")
+      .populate("owner", "firstname lastname email");
     if (order) res.json(order);
-    else res.status(404).json({ message: "order not found" });
+    else res.status(404).json("order not found");
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -35,11 +37,10 @@ router.delete("/delete/:id", authorize, async (req, res) => {
 
 router.post("/create", authorize, async (req, res) => {
   try {
-    const { product, quantity, price } = req.body;
+    const { products } = req.body;
     const newOrder = new Order({
-      product,
-      quantity,
-      price,
+      products,
+      owner: req.user,
     });
 
     await newOrder.save();
@@ -52,15 +53,13 @@ router.post("/create", authorize, async (req, res) => {
 router.put("/edit/:id", authorize, async (req, res) => {
   try {
     const updatedOrder = await Order.findByIdAndUpdate(req.params.id, {
-      product: req.body.product,
-      quantity: req.body.quantity,
-      price: req.body.price,
+      products: req.body.products,
     });
 
     if (updatedOrder) res.json(updatedOrder);
     else res.status(404).json({ message: "order not found" });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json(err.message);
   }
 });
 
